@@ -22,3 +22,19 @@ def estimate_local_frame(points: np.ndarray) -> tuple[np.ndarray, np.ndarray, np
     local_vertical = local_vertical / np.linalg.norm(local_vertical)
 
     return center, wire_direction, local_vertical
+
+def project_to_local_2d(
+    points: np.ndarray,
+    center: np.ndarray,
+    wire_direction: np.ndarray,
+    local_vertical: np.ndarray,
+) -> np.ndarray:
+    """Project 3D wire points into a local 2D coordinate system."""
+    centered_points = points - center
+
+    u = centered_points @ wire_direction
+    v = centered_points @ local_vertical
+
+    local_points = np.column_stack((u, v))
+    return local_points
+
