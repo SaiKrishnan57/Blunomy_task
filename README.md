@@ -1,35 +1,151 @@
 # Blunomy LiDAR Catenary Detection
 
-This project is a Python solution for Blunomy's LiDAR technical test.
+Python package for Blunomy's LiDAR technical test.
 
-The goal is to process LiDAR point cloud data stored in `.parquet` files, identify how many electrical wires are present in each dataset, and fit a 3D catenary model to each detected wire.
+The goal of this project is to process LiDAR point cloud data stored in `.parquet` files, identify wire structures in each scene, and fit catenary models to the detected wires.
 
-## Problem Summary
+## Problem Overview
 
-Each input file contains a 3D point cloud with `x`, `y`, and `z` coordinates.  
-Each point represents a LiDAR return in space.  
-A single file may contain points from multiple wires mixed together.
+Each input parquet file contains a 3D point cloud with:
 
-The objective is to:
+- x: horizontal coordinate
+- y: horizontal coordinate
+- z: height
 
-- detect the number of wires in a point cloud
-- group points belonging to the same wire
-- fit a catenary model to each wire
-- provide a reusable and maintainable Python implementation
+Each row is one LiDAR point, not one full wire.
+
+A single file may contain points from multiple wires mixed together, so the task is not only curve fitting. It also requires segmentation: separating which points belong to which wire before fitting a catenary model.
+
+The test brief provides the standard 2D catenary equation:
+
+`y(x) = y0 + c * cosh((x - x0) / c) - c`
+
+Because the LiDAR data is 3D, the solution first estimates a local frame for each wire and then fits the catenary in that local 2D frame.
+
+## Datasets
+
+The provided datasets are treated as independent LiDAR scenes:
+
+- `lidar_cable_points_easy.parquet`
+- `lidar_cable_points_medium.parquet`
+- `lidar_cable_points_hard.parquet`
+- `lidar_cable_points_extrahard.parquet`
 
 ## Approach
 
-The solution is designed as a pipeline with the following stages:
+The current implementation follows a staged geometric pipeline:
 
-1. Load the LiDAR point cloud from a parquet file.
-2. Perform lightweight preprocessing and validation.
-3. Cluster the point cloud into candidate wire groups.
-4. Estimate a local plane or frame for each wire.
-5. Project the 3D wire points into a 2D local coordinate system.
+1. Load a parquet point cloud.
+2. Apply lightweight preprocessing.
+3. Cluster points into candidate wire segments.
+4. Estimate a local coordinate frame for each cluster.
+5. Project each cluster into local 2D coordinates.
 6. Fit a catenary curve in that local frame.
-7. Reconstruct the fitted curve back into 3D.
+7. Group similar fitted clusters into final wire groups when needed.
 
-This approach allows the original 2D catenary equation to be adapted to 3D wire geometry.
+### Clustering strategy
 
-## Repository Structure
+The project began with DBSCAN directly on raw `x`, `y`, and `z` coordinates as a baseline.
+
+That worked on simpler scenes, but it tended to merge nearby parallel wires in harder datasets. To improve this, clustering was changed to work in the 2D cross-section perpendicular to the dominant wire direction of the scene.
+
+This made wire separation more meaningful, but it also introduced over-segmentation in some cases. To handle that, the pipeline adds a lightweight post-fit grouping step based on fitted wire characteristics, especially similar `y0` values.
+
+## Project Structure
+
+```text
+src/
+  lidar_catenary/
+    io.py
+    preprocess.py
+    clustering.py
+    geometry.py
+    catenary.py
+    pipeline.py
+    cli.py
+
+
+```
+
+### Module Summary
+
+- `io.py`: loads parquet point-cloud data and validates required columns
+- `preprocess.py`: performs lightweight cleaning
+- `clustering.py`: segments candidate wire clusters using DBSCAN in cross-sectional space
+- `geometry.py`: estimates local wire frames and projects 3D points to local 2D coordinates
+- `catenary.py`: defines and fits the catenary equation
+- `pipeline.py`: runs the full workflow on one input file
+- `cli.py`: provides a command-line entry point
+
+## Setup
+
+Create and activate a virtual environment:
+
+```powershell
+python -m venv .venv
+.venv\Scripts\Activate.ps1
+```
+
+Install dependencies:
+
+```powershell
+pip install pandas numpy scipy scikit-learn pyarrow
+pip install -e .
+```
+
+## Usage
+
+Run the pipeline on one parquet file:
+
+```powershell
+python -m lidar_catenary.cli "C:\path\to\lidar_cable_points_easy.parquet"
+```
+
+Example with the provided data:
+
+```powershell
+python -m lidar_catenary.cli "C:\Users\saikr\OneDrive\Desktop\Projects\Blunomy\Data Science - LiDAR Technical Test\lidar_cable_points_easy.parquet"
+```
+
+## Output
+
+The CLI currently prints a table with one row per fitted cluster, including:
+
+- `cluster`: raw DBSCAN cluster label
+- `num_points`: number of points in that cluster
+- `x0`: fitted trough location in local horizontal coordinates
+- `y0`: fitted minimum height in local coordinates
+- `c`: fitted catenary curvature parameter
+- `wire_group`: post-fit grouped interpretation of which clusters likely belong to the same final wire
+
+During development, the pipeline also prints temporary diagnostics such as coordinate ranges, DBSCAN settings, and cluster sizes. These were useful for understanding clustering behavior and can be cleaned up later if a quieter final output is preferred.
+
+## Design Notes
+
+- The solution is implemented as a Python package rather than a notebook-first analysis.
+- The pipeline is modular so each stage can be reasoned about independently.
+- The implementation favors clarity and explainability over heavy optimization.
+- The current grouping logic is intentionally lightweight and heuristic.
+
+## Current Limitations
+
+The current version works as an interview-ready prototype, but it is not a final production system.
+
+Known limitations include:
+
+- DBSCAN parameters are still hand-tuned.
+- Cross-sectional clustering assumes a meaningful dominant wire direction in the scene.
+- Post-fit wire grouping is heuristic and currently relies mainly on `y0`.
+- The pipeline does not yet compute explicit fit-quality metrics such as RMSE.
+- Visual inspection/export of fitted curves is not yet included.
+
+## Possible Next Improvements
+
+If extended further, likely next steps would be:
+
+- add fit-quality metrics
+- improve cluster merging using multiple fitted parameters
+- expose parameters through CLI options
+- add plots or exports of fitted 3D curves
+- add automated tests
 
