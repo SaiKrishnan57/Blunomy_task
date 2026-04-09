@@ -23,6 +23,7 @@ def estimate_local_frame(points: np.ndarray) -> tuple[np.ndarray, np.ndarray, np
 
     return center, wire_direction, local_vertical
 
+
 def project_to_local_2d(
     points: np.ndarray,
     center: np.ndarray,
