@@ -49,7 +49,7 @@ The project began with DBSCAN directly on raw `x`, `y`, and `z` coordinates as a
 
 That worked on simpler scenes, but it tended to merge nearby parallel wires in harder datasets. To improve this, clustering was changed to work in the 2D cross-section perpendicular to the dominant wire direction of the scene.
 
-This made wire separation more meaningful, but it also introduced over-segmentation in some cases. To handle that, the pipeline adds a lightweight post-fit grouping step based on fitted wire characteristics, especially similar `y0` values.
+This made wire separation more meaningful, but it also introduced over-segmentation in some cases. To handle that, the pipeline adds a conservative post-fit grouping step based on fitted wire characteristics. Clusters are only merged into broader wire groups when the fitted vertical positions show clear separation; otherwise they are kept separate to avoid over-merging.
 
 ## Project Structure
 
@@ -116,7 +116,7 @@ The CLI currently prints a table with one row per fitted cluster, including:
 - `x0`: fitted trough location in local horizontal coordinates
 - `y0`: fitted minimum height in local coordinates
 - `c`: fitted catenary curvature parameter
-- `wire_group`: post-fit grouped interpretation of which clusters likely belong to the same final wire
+- `wire_group`: conservative post-fit interpretation of which clusters likely belong to the same final wire
 
 During development, the pipeline also prints temporary diagnostics such as coordinate ranges, DBSCAN settings, and cluster sizes. These were useful for understanding clustering behavior and can be cleaned up later if a quieter final output is preferred.
 
@@ -125,7 +125,7 @@ During development, the pipeline also prints temporary diagnostics such as coord
 - The solution is implemented as a Python package rather than a notebook-first analysis.
 - The pipeline is modular so each stage can be reasoned about independently.
 - The implementation favors clarity and explainability over heavy optimization.
-- The current grouping logic is intentionally lightweight and heuristic.
+- The current grouping logic is intentionally lightweight, heuristic, and conservative.
 
 ## Current Limitations
 
@@ -135,7 +135,7 @@ Known limitations include:
 
 - DBSCAN parameters are still hand-tuned.
 - Cross-sectional clustering assumes a meaningful dominant wire direction in the scene.
-- Post-fit wire grouping is heuristic and currently relies mainly on `y0`.
+- Post-fit wire grouping is heuristic and relies mainly on fitted vertical separation. When the fitted clusters do not show clear separation, the pipeline keeps them distinct rather than forcing a merge.
 - The pipeline does not yet compute explicit fit-quality metrics such as RMSE.
 - Visual inspection/export of fitted curves is not yet included.
 
@@ -148,4 +148,3 @@ If extended further, likely next steps would be:
 - expose parameters through CLI options
 - add plots or exports of fitted 3D curves
 - add automated tests
-

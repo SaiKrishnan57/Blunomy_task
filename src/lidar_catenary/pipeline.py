@@ -7,9 +7,20 @@ from lidar_catenary.geometry import estimate_local_frame, project_to_local_2d
 from lidar_catenary.catenary import fit_catenary
 
 
-def assign_wire_group(y0: float) -> str:
-    """Assign a coarse wire group based on fitted vertical position."""
-    return f"{round(y0, 1)}"
+def assign_wire_groups(results_df: pd.DataFrame, y0_threshold: float = 0.1) -> pd.DataFrame:
+    """Assign wire groups only when fitted vertical positions show clear separation."""
+    if results_df.empty:
+        return results_df
+
+    y0_spread = results_df["y0"].max() - results_df["y0"].min()
+    grouped = results_df.copy()
+
+    if y0_spread < y0_threshold:
+        grouped["wire_group"] = grouped["cluster"].astype(str)
+        return grouped
+
+    grouped["wire_group"] = grouped["y0"].round(1).astype(str)
+    return grouped
 
 
 def run_pipeline(file_path: str) -> pd.DataFrame:
@@ -46,7 +57,6 @@ def run_pipeline(file_path: str) -> pd.DataFrame:
                     "x0": float(x0),
                     "y0": float(y0),
                     "c": float(c),
-                    "wire_group": assign_wire_group(float(y0)),
                 }
             )
         except Exception as error:
@@ -58,4 +68,8 @@ def run_pipeline(file_path: str) -> pd.DataFrame:
                 }
             )
 
-    return pd.DataFrame(results)
+    results_df = pd.DataFrame(results)
+    if {"cluster", "y0"}.issubset(results_df.columns):
+        results_df = assign_wire_groups(results_df)
+
+    return results_df
