@@ -63,8 +63,12 @@ src/
     catenary.py
     pipeline.py
     cli.py
-
-
+tests/
+  test_io.py
+  test_preprocess.py
+  test_geometry.py
+  test_catenary.py
+  test_pipeline.py
 ```
 
 ### Module Summary
@@ -89,8 +93,13 @@ python -m venv .venv
 Install dependencies:
 
 ```powershell
-pip install pandas numpy scipy scikit-learn pyarrow
 pip install -e .
+```
+
+For development, testing, and coverage:
+
+```powershell
+pip install -e .[dev]
 ```
 
 ## Usage
@@ -106,6 +115,36 @@ Example with the provided data:
 ```powershell
 python -m lidar_catenary.cli "C:\Users\saikr\OneDrive\Desktop\Projects\Blunomy\Data Science - LiDAR Technical Test\lidar_cable_points_easy.parquet"
 ```
+
+## Tests
+
+Run the full test suite:
+
+```powershell
+pytest
+```
+
+If `pytest` is not available on your shell path, use:
+
+```powershell
+python -m pytest
+```
+
+## Coverage
+
+To view terminal coverage with missing lines:
+
+```powershell
+pytest --cov=src/lidar_catenary --cov-report=term-missing
+```
+
+To generate an HTML coverage report:
+
+```powershell
+pytest --cov=src/lidar_catenary --cov-report=html
+```
+
+This creates an `htmlcov/` directory. Open `htmlcov/index.html` in a browser to inspect line-by-line coverage.
 
 ## Output
 
@@ -147,4 +186,4 @@ If extended further, likely next steps would be:
 - improve cluster merging using multiple fitted parameters
 - expose parameters through CLI options
 - add plots or exports of fitted 3D curves
-- add automated tests
+- expand automated tests and add stronger integration-style validation
