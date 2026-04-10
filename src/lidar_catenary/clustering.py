@@ -21,4 +21,6 @@ def cluster_wires(point_cloud: pd.DataFrame, eps: float = 0.6, min_samples: int 
 
     clustered = point_cloud.copy()
     clustered["cluster"] = labels
+    
     return clustered
+
